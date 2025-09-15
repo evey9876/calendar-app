@@ -12,16 +12,16 @@ interface ViewerSidebarProps {
 }
 
 const eventTypeColors: Record<EventType, string> = {
-  PLANNING: '#07182D',
-  MEETING: '#02C8FF',
-  MONTHLY_REVIEW: '#FF007F',
+  PLANNING: '#2563eb',
+  MEETING: '#dc2626',
+  MONTHLY_REVIEW: '#000000',
   HOLIDAYS: '#FF9000',
 };
 
 const eventTypeLabels: Record<EventType, string> = {
-  PLANNING: 'Planning',
-  MEETING: 'Meeting',
-  MONTHLY_REVIEW: 'Monthly Review',
+  PLANNING: 'PI Planning',
+  MEETING: 'Sprint Start',
+  MONTHLY_REVIEW: 'FY Week',
   HOLIDAYS: 'Holidays',
 };
 
