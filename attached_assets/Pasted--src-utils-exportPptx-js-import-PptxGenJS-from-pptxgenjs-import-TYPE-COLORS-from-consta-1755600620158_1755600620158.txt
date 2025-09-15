@@ -1,0 +1,90 @@
+// src/utils/exportPptx.js
+import PptxGenJS from "pptxgenjs";
+import { TYPE_COLORS } from "../constants/colors";
+
+// Expect events like: { id, type: "PLANNING|MEETING|MONTHLY_REVIEW|HOLIDAYS", title: "text", date: "YYYY-MM-DD" }
+export function exportToPptx({ events, fileName = "calendar-2025-26.pptx" }) {
+  const pptx = new PptxGenJS();
+
+  // Title slide
+  const title = pptx.addSlide();
+  title.addText("Operating Year Calendar 2025–26", { x: 1, y: 1, fontSize: 28, bold: true });
+  title.addText("Date-only view (no times)", { x: 1, y: 1.6, fontSize: 16 });
+
+  // Group events by month (Aug 2025 → Jul 2026)
+  const byMonth = groupByMonth(events);
+
+  // One slide per month
+  for (const m of byMonth) {
+    const slide = pptx.addSlide();
+    slide.addText(m.label, { x: 0.5, y: 0.4, fontSize: 22, bold: true });
+
+    // Render as a simple table with color-coded rows
+    const rows = [
+      [{ text: "Date", options: { bold: true } }, { text: "Type", options: { bold: true } }, { text: "Title", options: { bold: true } }],
+      ...m.items.map((e) => ([
+        formatDate(e.date),
+        e.type.replace("_", " "),
+        { text: e.title || "", options: { color: TYPE_COLORS[e.type] || "000000" } },
+      ])),
+    ];
+
+    slide.addTable(rows, {
+      x: 0.5,
+      y: 1.0,
+      w: 9.0,
+      colW: [1.4, 2.2, 5.4],
+      border: { type: "none" },
+      margin: 2,
+      fontSize: 14,
+      fill: "FFFFFF",
+    });
+  }
+
+  pptx.writeFile({ fileName });
+}
+
+function groupByMonth(events) {
+  const start = new Date("2025-08-01");
+  const end = new Date("2026-07-31");
+  const inRange = events
+    .map((e) => ({ ...e, _d: new Date(e.date) }))
+    .filter((e) => e._d >= start && e._d <= end)
+    .sort((a, b) => a._d - b._d);
+
+  // Build { "2025-08": [...] } then map to array in chronological order
+  const buckets = new Map();
+  inRange.forEach((e) => {
+    const key = `${e._d.getFullYear()}-${String(e._d.getMonth() + 1).padStart(2, "0")}`;
+    if (!buckets.has(key)) buckets.set(key, []);
+    buckets.get(key).push(e);
+  });
+
+  // Ensure all months Aug 2025 → Jul 2026 exist, even if empty
+  const months = [];
+  for (let y = 2025, m = 7; !(y === 2026 && m === 7); ) {
+    const key = `${y}-${String(m + 1).padStart(2, "0")}`;
+    months.push({
+      key,
+      label: monthLabel(y, m),
+      items: buckets.get(key) || [],
+    });
+    m++;
+    if (m > 11) { m = 0; y++; }
+    if (y === 2026 && m === 7) break; // stop after July 2026
+  }
+  return months;
+}
+
+function monthLabel(year, monthIdx0) {
+  const names = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  return `${names[monthIdx0]} ${year}`;
+}
+
+function formatDate(isoDate) {
+  // YYYY-MM-DD → DD Mon
+  const d = new Date(isoDate);
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mon = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()];
+  return `${dd} ${mon}`;
+}
