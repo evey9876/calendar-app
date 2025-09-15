@@ -41,7 +41,7 @@ interface CalendarState {
 
 export const useCalendarStore = create<CalendarState>((set, get) => ({
   events: [],
-  currentDate: new Date(),
+  currentDate: new Date(2025, 0, 15), // Set to January 2025 to show Q2 with existing events
   viewMode: 'month',
   selectedEvent: null,
   searchQuery: '',
