@@ -18,7 +18,7 @@ function Router() {
     <Switch>
       <Route path="/" component={CalendarPage} />
       <Route path="/viewer" component={CalendarViewerPage} />
-      <Route component={NotFound} />
+      <Route><NotFound /></Route>
     </Switch>
   );
 }
@@ -35,3 +35,4 @@ function App() {
 }
 
 export default App;
+
