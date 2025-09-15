@@ -1,6 +1,9 @@
 import { z } from "zod";
+import { pgTable, varchar, text, timestamp } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 
-export const eventTypeSchema = z.enum(["PLANNING", "MEETING", "MONTHLY_REVIEW", "HOLIDAYS"]);
+export const eventTypeSchema = z.enum(["PLANNING", "MEETING", "MONTHLY_REVIEW", "HOLIDAYS", "QBR"]);
 
 export const eventSchema = z.object({
   id: z.string(),
@@ -44,3 +47,30 @@ export const exportDataSchema = z.object({
 });
 
 export type ExportData = z.infer<typeof exportDataSchema>;
+
+// Drizzle database table definitions
+export const events = pgTable("events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: varchar("title", { length: 255 }).notNull(),
+  type: varchar("type", { length: 50 }).notNull().$type<EventType>(),
+  date: varchar("date", { length: 10 }).notNull(), // ISO date string (YYYY-MM-DD)
+  endDate: varchar("end_date", { length: 10 }), // ISO date string for multi-day events
+  startTime: varchar("start_time", { length: 5 }), // HH:MM format
+  endTime: varchar("end_time", { length: 5 }), // HH:MM format  
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Drizzle-generated schemas with Zod validation
+export const insertEventSchema = createInsertSchema(events).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const selectEventSchema = createSelectSchema(events);
+
+// Type exports for Drizzle
+export type DbEvent = typeof events.$inferSelect;
+export type DbInsertEvent = typeof events.$inferInsert;
