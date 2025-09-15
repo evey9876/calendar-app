@@ -53,16 +53,26 @@
   --spacing: 0.25rem;
 
   /* Calendar-specific colors */
-  --planning: hsl(203 76% 10%);      /* #07182D */
-  --meeting: hsl(193 98% 52%);       /* #02C8FF */
-  --holidays: hsl(30 100% 50%);      /* #FF9000 */
-  
+  --planning: hsl(217 91% 60%);
+  /* #2563eb - Blue for PI planning */
+  --meeting: hsl(0 84% 60%);
+  /* #dc2626 - Red for Sprint start */
+  --monthly-review: hsl(0 0% 0%);
+  /* #000000 - Black for FY week */
+  --holidays: hsl(30 100% 50%);
+  /* #FF9000 - Orange for Holidays */
+
   /* Additional grays from design */
-  --gray-50: hsl(0 0% 98%);          /* #FAFAFA */
-  --gray-100: hsl(0 0% 96%);         /* #F5F5F5 */
-  --gray-200: hsl(220 13% 91%);      /* #E5E7EB */
-  --gray-600: hsl(0 0% 40%);         /* #666666 */
-  --gray-800: hsl(0 0% 20%);         /* #333333 */
+  --gray-50: hsl(0 0% 98%);
+  /* #FAFAFA */
+  --gray-100: hsl(0 0% 96%);
+  /* #F5F5F5 */
+  --gray-200: hsl(220 13% 91%);
+  /* #E5E7EB */
+  --gray-600: hsl(0 0% 40%);
+  /* #666666 */
+  --gray-800: hsl(0 0% 20%);
+  /* #333333 */
 }
 
 .dark {
@@ -134,4 +144,20 @@
 
 .event-holidays {
   background-color: hsl(var(--holidays));
+}
+
+/* Compact month view styling */
+.calendar-compact .rbc-month-view {
+  font-size: 0.85rem;
+  /* smaller text */
+}
+
+.calendar-compact .rbc-month-row {
+  min-height: 80px !important;
+  /* reduce row height */
+}
+
+.calendar-compact .rbc-date-cell {
+  padding: 2px !important;
+  /* less padding */
 }
