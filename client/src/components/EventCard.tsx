@@ -12,10 +12,11 @@ interface EventCardProps {
 }
 
 const eventTypeColors: Record<EventType, string> = {
-  PLANNING: 'bg-[#07182D]',
-  MEETING: 'bg-[#02C8FF]',
-  MONTHLY_REVIEW: 'bg-[#FF007F]',
+  PLANNING: 'bg-[#2563eb]',
+  MEETING: 'bg-[#dc2626]',
+  MONTHLY_REVIEW: 'bg-[#000000]',
   HOLIDAYS: 'bg-[#FF9000]',
+  QBR: 'bg-[#ec4899]',
 };
 
 export function EventCard({ event, onClick, isDragging = false, viewerMode = false }: EventCardProps) {
