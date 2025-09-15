@@ -5,8 +5,9 @@ import { useCalendarStore } from '@/stores/calendarStore';
 import { parseNaturalLanguage } from '@/lib/dateParser';
 import { useToast } from '@/hooks/use-toast';
 import { EventType } from '@shared/schema';
-import { Plus, Search, Download, Upload, Menu, PlusCircle, FileText, Calendar, Grid3X3, LayoutGrid, List } from 'lucide-react';
+import { Plus, Search, Download, Upload, Menu, PlusCircle, FileText, Calendar, Grid3X3, LayoutGrid, List, AlertTriangle } from 'lucide-react';
 import BulkPasteImporter from '@/components/BulkPasteImporter';
+import { DataRecoveryButton } from '@/components/DataRecoveryButton';
 
 interface SidebarProps {
   onCreateEvent: () => void;
@@ -19,17 +20,19 @@ interface SidebarProps {
 }
 
 const eventTypeColors: Record<EventType, string> = {
-  PLANNING: '#07182D',
-  MEETING: '#02C8FF',
-  MONTHLY_REVIEW: '#FF007F',
+  PLANNING: '#2563eb',
+  MEETING: '#dc2626',
+  MONTHLY_REVIEW: '#000000',
   HOLIDAYS: '#FF9000',
+  QBR: '#ec4899',
 };
 
 const eventTypeLabels: Record<EventType, string> = {
-  PLANNING: 'Planning',
-  MEETING: 'Meeting',
-  MONTHLY_REVIEW: 'Monthly Review',
+  PLANNING: 'PI Planning',
+  MEETING: 'Sprint Start',
+  MONTHLY_REVIEW: 'FY Week',
   HOLIDAYS: 'Holidays',
+  QBR: 'QBR',
 };
 
 export function Sidebar({ onCreateEvent, onExport, onImport, onExportPptxTable, onExportPptxMonthGrid, onExportPptxQuarterGrid, onBulkImport }: SidebarProps) {
@@ -114,6 +117,18 @@ export function Sidebar({ onCreateEvent, onExport, onImport, onExportPptxTable, 
           >
             <Menu className="text-gray-600" />
           </Button>
+        </div>
+
+        {/* Data Recovery */}
+        <div className="mb-8 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <div className="flex items-center mb-2">
+            <AlertTriangle className="w-4 h-4 text-yellow-600 mr-2" />
+            <h3 className="text-sm font-medium text-yellow-800">Data Recovery</h3>
+          </div>
+          <p className="text-xs text-yellow-700 mb-3">
+            Lost events after database migration? Click to recover them from your browser storage.
+          </p>
+          <DataRecoveryButton />
         </div>
 
         {/* Quick Add Event */}
