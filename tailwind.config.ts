@@ -64,6 +64,7 @@ export default {
         // Calendar-specific colors
         planning: "var(--planning)",
         meeting: "var(--meeting)",
+        "monthly-review": "var(--monthly-review)",
         holidays: "var(--holidays)",
         // Additional grays from design
         'gray-50': "var(--gray-50)",
