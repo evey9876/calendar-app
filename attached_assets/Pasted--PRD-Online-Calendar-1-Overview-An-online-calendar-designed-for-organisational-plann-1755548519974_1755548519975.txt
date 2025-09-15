@@ -1,0 +1,99 @@
+# **PRD: Online Calendar**
+
+## **1. Overview**
+
+An online calendar designed for organisational planning. Users can quickly add events using natural text input (words + dates), manage them via drag-and-drop, and view them in colour-coded categories. All events are stored locally for privacy and offline use.
+
+---
+
+## **2. Objectives**
+
+- Provide a simple, intuitive calendar tool.
+- Ensure all data is stored **locally** on the user’s device.
+- Support **different colours for event types** to distinguish categories at a glance.
+- Allow **drag-and-drop event management**.
+- Enable **natural language event entry** that publishes automatically.
+
+---
+
+## **3. Event Types & Colour Codes**
+
+| **Event Type** | **Hex Code** | **Preview** |
+| --- | --- | --- |
+| **PI Planning** | #07182D |  |
+| **QBR** | #02C8FF |  |
+| **QBR Planning** | #0A60FF |  |
+| **Monthly Review** | #FF007F |  |
+| **Holidays** | #FF9000 |  |
+
+---
+
+## **4. Key Features**
+
+- **Event Management**: Create, edit, delete events.
+- **Drag-and-Drop**: Move events across days/weeks/months.
+- **Natural Language Entry**: Enter events with words and dates (e.g., *“QBR on 10 Sep 2–4pm”*) → auto-published.
+- **Views**: Month, Week, Day view options.
+- **Search & Filter**: Filter by event type or keyword.
+
+---
+
+## **5. Storage**
+
+- **Local-first**: All events stored in the browser (IndexedDB).
+- Optional manual export/import to JSON or iCal format.
+- Offline-capable (PWA).
+
+---
+
+## **6. Non-Functional Requirements**
+
+- Calendar loads in under 2 seconds.
+- Supports at least 1,000 events without slowdown.
+- Works on Chrome, Edge, Firefox, Safari.
+- No external data sync by default (privacy-first).
+
+---
+
+## **7. Success Metrics**
+
+- Users can create and publish an event in < 5 seconds.
+- Drag-and-drop interaction works seamlessly >95% of the time.
+- Natural language input correctly parses ≥ 90% of common event entries.
+
+---
+
+## **8. Tech Stack (Proposed)**
+
+- **Frontend:** React (Vite).
+- **UI:** Tailwind CSS.
+- **Drag-and-drop:** @dnd-kit/core.
+- **Date parsing:** chrono-node.
+- **Local storage:** IndexedDB (idb wrapper).
+- **Export/Import:** ics package.
+- **State management:** Zustand.
+
+---
+
+## **9. User Flows**
+
+1. **Quick Add → Auto Publish**
+    
+    User types “PI Planning 3 Oct 10–12” → parsed → published → visible in calendar.
+    
+2. **Drag & Drop**
+    
+    User drags event card to another day → event time/date updated automatically.
+    
+3. **Export/Import**
+    
+    User exports all events as JSON/ICS → later re-imports them.
+    
+
+---
+
+## **10. Future Enhancements**
+
+- Support for recurring events.
+- Multi-user collaboration (LAN or cloud sync).
+- Notifications and reminders.
