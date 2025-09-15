@@ -23,8 +23,9 @@ interface CreateEventModalProps {
 const eventTypeLabels: Record<EventType, string> = {
   PLANNING: 'Planning',
   MEETING: 'Meeting',
-  MONTHLY_REVIEW: 'Monthly Review',
+  MONTHLY_REVIEW: 'FY Week',
   HOLIDAYS: 'Holidays',
+  QBR: 'QBR',
 };
 
 export function CreateEventModal({ isOpen, onClose, defaultDate, editingEvent }: CreateEventModalProps) {
