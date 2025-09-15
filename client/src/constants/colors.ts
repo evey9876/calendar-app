@@ -1,0 +1,6 @@
+export const TYPE_COLORS = {
+  PLANNING: "#07182D",
+  MEETING: "#02C8FF",
+  MONTHLY_REVIEW: "#FF007F",
+  HOLIDAYS: "#FF9000",
+};
