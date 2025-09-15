@@ -1,0 +1,679 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Online Calendar - Organizational Planning</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'pi-planning': '#07182D',
+                        'qbr': '#02C8FF',
+                        'qbr-planning': '#0A60FF',
+                        'monthly-review': '#FF007F',
+                        'holidays': '#FF9000'
+                    },
+                    fontFamily: {
+                        'sans': ['Inter', 'system-ui', 'sans-serif']
+                    }
+                }
+            }
+        };
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50 font-sans">
+    <!-- @COMPONENT: CalendarApp [main application container] -->
+    <div class="min-h-screen flex flex-col">
+        <!-- Header -->
+        <!-- @COMPONENT: CalendarHeader [navigation and controls] -->
+        <header class="bg-white shadow-sm border-b border-gray-200 px-4 py-3">
+            <div class="max-w-7xl mx-auto">
+                <div class="flex items-center justify-between">
+                    <!-- Logo and Title -->
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 bg-qbr-planning rounded-lg flex items-center justify-center">
+                            <i class="fas fa-calendar-alt text-white text-sm"></i>
+                        </div>
+                        <h1 class="text-xl font-semibold text-gray-900">Calendar</h1>
+                    </div>
+
+                    <!-- Natural Language Input -->
+                    <!-- @FUNCTIONALITY: This input should parse natural language and auto-create events -->
+                    <div class="flex-1 max-w-md mx-8">
+                        <div class="relative">
+                            <input 
+                                type="text" 
+                                placeholder='Try "QBR on 10 Sep 2-4pm" or "PI Planning next Monday"'
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-qbr-planning focus:border-transparent transition-colors"
+                                data-implementation="Should use chrono-node for date parsing and auto-publish events"
+                                data-mock="true"
+                            />
+                            <button class="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 text-gray-400 hover:text-qbr-planning transition-colors">
+                                <i class="fas fa-plus text-sm"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- View Controls and Actions -->
+                    <div class="flex items-center space-x-4">
+                        <!-- View Switcher -->
+                        <!-- @STATE: currentView:string = 'month' -->
+                        <div class="flex bg-gray-100 rounded-lg p-1">
+                            <button class="px-3 py-1 text-sm font-medium bg-white text-gray-900 rounded-md shadow-sm">Month</button>
+                            <button class="px-3 py-1 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">Week</button>
+                            <button class="px-3 py-1 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">Day</button>
+                        </div>
+
+                        <!-- Export/Import -->
+                        <div class="relative">
+                            <button class="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors" data-event="click:toggleExportMenu">
+                                <i class="fas fa-download"></i>
+                            </button>
+                        </div>
+
+                        <!-- Settings -->
+                        <button class="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Secondary Header with Navigation and Filters -->
+                <div class="flex items-center justify-between mt-4">
+                    <!-- Month Navigation -->
+                    <div class="flex items-center space-x-4">
+                        <div class="flex items-center space-x-2">
+                            <button class="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            <h2 class="text-2xl font-semibold text-gray-900 min-w-[200px]">December 2024</h2>
+                            <button class="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+                        <button class="px-3 py-1 text-sm text-qbr-planning hover:bg-blue-50 rounded-lg transition-colors">Today</button>
+                    </div>
+
+                    <!-- Event Type Filters -->
+                    <!-- @FUNCTIONALITY: Toggle filters for different event types -->
+                    <div class="flex items-center space-x-2">
+                        <span class="text-sm font-medium text-gray-700 mr-2">Filters:</span>
+                        <button class="flex items-center space-x-2 px-3 py-1 bg-white border border-pi-planning text-pi-planning rounded-full text-sm hover:bg-gray-50 transition-colors">
+                            <div class="w-3 h-3 rounded-full bg-pi-planning"></div>
+                            <span>PI Planning</span>
+                        </button>
+                        <button class="flex items-center space-x-2 px-3 py-1 bg-white border border-qbr text-qbr rounded-full text-sm hover:bg-gray-50 transition-colors">
+                            <div class="w-3 h-3 rounded-full bg-qbr"></div>
+                            <span>QBR</span>
+                        </button>
+                        <button class="flex items-center space-x-2 px-3 py-1 bg-white border border-qbr-planning text-qbr-planning rounded-full text-sm hover:bg-gray-50 transition-colors">
+                            <div class="w-3 h-3 rounded-full bg-qbr-planning"></div>
+                            <span>QBR Planning</span>
+                        </button>
+                        <button class="flex items-center space-x-2 px-3 py-1 bg-white border border-monthly-review text-monthly-review rounded-full text-sm hover:bg-gray-50 transition-colors">
+                            <div class="w-3 h-3 rounded-full bg-monthly-review"></div>
+                            <span>Monthly Review</span>
+                        </button>
+                        <button class="flex items-center space-x-2 px-3 py-1 bg-white border border-holidays text-holidays rounded-full text-sm hover:bg-gray-50 transition-colors">
+                            <div class="w-3 h-3 rounded-full bg-holidays"></div>
+                            <span>Holidays</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+        <!-- @END_COMPONENT: CalendarHeader -->
+
+        <!-- Main Calendar Content -->
+        <!-- @COMPONENT: CalendarGrid [main calendar display] -->
+        <main class="flex-1 p-4">
+            <div class="max-w-7xl mx-auto">
+                <!-- Calendar Grid -->
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                    <!-- Days of Week Header -->
+                    <div class="grid grid-cols-7 border-b border-gray-200">
+                        <!-- @MAP: daysOfWeek.map(day => ( -->
+                        <div class="p-3 text-center text-sm font-medium text-gray-700 bg-gray-50">Sunday</div>
+                        <div class="p-3 text-center text-sm font-medium text-gray-700 bg-gray-50">Monday</div>
+                        <div class="p-3 text-center text-sm font-medium text-gray-700 bg-gray-50">Tuesday</div>
+                        <div class="p-3 text-center text-sm font-medium text-gray-700 bg-gray-50">Wednesday</div>
+                        <div class="p-3 text-center text-sm font-medium text-gray-700 bg-gray-50">Thursday</div>
+                        <div class="p-3 text-center text-sm font-medium text-gray-700 bg-gray-50">Friday</div>
+                        <div class="p-3 text-center text-sm font-medium text-gray-700 bg-gray-50">Saturday</div>
+                        <!-- @END_MAP )) -->
+                    </div>
+
+                    <!-- Calendar Days Grid -->
+                    <!-- @FUNCTIONALITY: This grid should support drag-and-drop event management -->
+                    <div class="grid grid-cols-7" style="min-height: 600px;">
+                        <!-- Week 1 -->
+                        <!-- @MAP: calendarDays.map(day => ( -->
+                        <!-- Day 1 - Dec 1 (Previous month) -->
+                        <div class="border-b border-r border-gray-200 p-2 bg-gray-25 min-h-[120px] relative" data-date="2024-12-01">
+                            <div class="text-sm text-gray-400 font-medium">1</div>
+                        </div>
+
+                        <!-- Day 2 - Dec 2 -->
+                        <div class="border-b border-r border-gray-200 p-2 min-h-[120px] relative hover:bg-blue-25 transition-colors cursor-pointer" data-date="2024-12-02" data-implementation="Should handle drop events for moving calendar items">
+                            <div class="text-sm text-gray-900 font-medium mb-2">2</div>
+                        </div>
+
+                        <!-- Day 3 - Dec 3 -->
+                        <div class="border-b border-r border-gray-200 p-2 min-h-[120px] relative hover:bg-blue-25 transition-colors cursor-pointer" data-date="2024-12-03">
+                            <div class="text-sm text-gray-900 font-medium mb-2">3</div>
+                            <!-- Event: PI Planning -->
+                            <!-- @FUNCTIONALITY: Events should be draggable to other calendar days -->
+                            <div class="mb-1 p-1 rounded text-xs text-white bg-pi-planning cursor-move hover:shadow-md transition-shadow" 
+                                 draggable="true" 
+                                 data-event-id="1" 
+                                 data-implementation="Should use @dnd-kit for drag and drop functionality"
+                                 data-mock="true">
+                                <div class="font-medium">PI Planning Q4</div>
+                                <div class="text-xs opacity-90">10:00 AM - 12:00 PM</div>
+                            </div>
+                        </div>
+
+                        <!-- Day 4 - Dec 4 -->
+                        <div class="border-b border-r border-gray-200 p-2 min-h-[120px] relative hover:bg-blue-25 transition-colors cursor-pointer" data-date="2024-12-04">
+                            <div class="text-sm text-gray-900 font-medium mb-2">4</div>
+                        </div>
+
+                        <!-- Day 5 - Dec 5 -->
+                        <div class="border-b border-r border-gray-200 p-2 min-h-[120px] relative hover:bg-blue-25 transition-colors cursor-pointer" data-date="2024-12-05">
+                            <div class="text-sm text-gray-900 font-medium mb-2">5</div>
+                            <!-- Event: QBR -->
+                            <div class="mb-1 p-1 rounded text-xs text-white bg-qbr cursor-move hover:shadow-md transition-shadow" 
+                                 draggable="true" 
+                                 data-event-id="2"
+                                 data-mock="true">
+                                <div class="font-medium">Q4 Business Review</div>
+                                <div class="text-xs opacity-90">2:00 PM - 4:00 PM</div>
+                            </div>
+                        </div>
+
+                        <!-- Day 6 - Dec 6 -->
+                        <div class="border-b border-r border-gray-200 p-2 min-h-[120px] relative hover:bg-blue-25 transition-colors cursor-pointer" data-date="2024-12-06">
+                            <div class="text-sm text-gray-900 font-medium mb-2">6</div>
+                        </div>
+
+                        <!-- Day 7 - Dec 7 -->
+                        <div class="border-b border-r border-gray-200 p-2 min-h-[120px] relative hover:bg-blue-25 transition-colors cursor-pointer" data-date="2024-12-07">
+                            <div class="text-sm text-gray-900 font-medium mb-2">7</div>
+                        </div>
+
+                        <!-- Week 2 -->
+                        <!-- Day 8 - Dec 8 -->
+                        <div class="border-b border-r border-gray-200 p-2 min-h-[120px] relative hover:bg-blue-25 transition-colors cursor-pointer" data-date="2024-12-08">
+                            <div class="text-sm text-gray-900 font-medium mb-2">8</div>
+                        </div>
+
+                        <!-- Day 9 - Dec 9 -->
+                        <div class="border-b border-r border-gray-200 p-2 min-h-[120px] relative hover:bg-blue-25 transition-colors cursor-pointer" data-date="2024-12-09">
+                            <div class="text-sm text-gray-900 font-medium mb-2">9</div>
+                        </div>
+
+                        <!-- Day 10 - Dec 10 -->
+                        <div class="border-b border-r border-gray-200 p-2 min-h-[120px] relative hover:bg-blue-25 transition-colors cursor-pointer" data-date="2024-12-10">
+                            <div class="text-sm text-gray-900 font-medium mb-2">10</div>
+                            <!-- Event: QBR Planning -->
+                            <div class="mb-1 p-1 rounded text-xs text-white bg-qbr-planning cursor-move hover:shadow-md transition-shadow" 
+                                 draggable="true" 
+                                 data-event-id="3"
+                                 data-mock="true">
+                                <div class="font-medium">QBR Planning Session</div>
+                                <div class="text-xs opacity-90">9:00 AM - 11:00 AM</div>
+                            </div>
+                        </div>
+
+                        <!-- Day 11 - Dec 11 -->
+                        <div class="border-b border-r border-gray-200 p-2 min-h-[120px] relative hover:bg-blue-25 transition-colors cursor-pointer" data-date="2024-12-11">
+                            <div class="text-sm text-gray-900 font-medium mb-2">11</div>
+                        </div>
+
+                        <!-- Day 12 - Dec 12 -->
+                        <div class="border-b border-r border-gray-200 p-2 min-h-[120px] relative hover:bg-blue-25 transition-colors cursor-pointer" data-date="2024-12-12">
+                            <div class="text-sm text-gray-900 font-medium mb-2">12</div>
+                        </div>
+
+                        <!-- Day 13 - Dec 13 -->
+                        <div class="border-b border-r border-gray-200 p-2 min-h-[120px] relative hover:bg-blue-25 transition-colors cursor-pointer" data-date="2024-12-13">
+                            <div class="text-sm text-gray-900 font-medium mb-2">13</div>
+                        </div>
+
+                        <!-- Day 14 - Dec 14 (Today) -->
+                        <div class="border-b border-r border-gray-200 p-2 min-h-[120px] relative bg-blue-50 border-qbr-planning border-2" data-date="2024-12-14">
+                            <div class="text-sm text-qbr-planning font-semibold mb-2">14</div>
+                            <div class="absolute top-1 right-1 w-2 h-2 bg-qbr-planning rounded-full"></div>
+                        </div>
+
+                        <!-- Week 3 -->
+                        <div class="border-b border-r border-gray-200 p-2 min-h-[120px] relative hover:bg-blue-25 transition-colors cursor-pointer" data-date="2024-12-15">
+                            <div class="text-sm text-gray-900 font-medium mb-2">15</div>
+                            <!-- Event: Monthly Review -->
+                            <div class="mb-1 p-1 rounded text-xs text-white bg-monthly-review cursor-move hover:shadow-md transition-shadow" 
+                                 draggable="true" 
+                                 data-event-id="4"
+                                 data-mock="true">
+                                <div class="font-medium">December Review</div>
+                                <div class="text-xs opacity-90">3:00 PM - 5:00 PM</div>
+                            </div>
+                        </div>
+
+                        <div class="border-b border-r border-gray-200 p-2 min-h-[120px] relative hover:bg-blue-25 transition-colors cursor-pointer" data-date="2024-12-16">
+                            <div class="text-sm text-gray-900 font-medium mb-2">16</div>
+                        </div>
+
+                        <div class="border-b border-r border-gray-200 p-2 min-h-[120px] relative hover:bg-blue-25 transition-colors cursor-pointer" data-date="2024-12-17">
+                            <div class="text-sm text-gray-900 font-medium mb-2">17</div>
+                        </div>
+
+                        <div class="border-b border-r border-gray-200 p-2 min-h-[120px] relative hover:bg-blue-25 transition-colors cursor-pointer" data-date="2024-12-18">
+                            <div class="text-sm text-gray-900 font-medium mb-2">18</div>
+                        </div>
+
+                        <div class="border-b border-r border-gray-200 p-2 min-h-[120px] relative hover:bg-blue-25 transition-colors cursor-pointer" data-date="2024-12-19">
+                            <div class="text-sm text-gray-900 font-medium mb-2">19</div>
+                        </div>
+
+                        <div class="border-b border-r border-gray-200 p-2 min-h-[120px] relative hover:bg-blue-25 transition-colors cursor-pointer" data-date="2024-12-20">
+                            <div class="text-sm text-gray-900 font-medium mb-2">20</div>
+                        </div>
+
+                        <div class="border-b border-r border-gray-200 p-2 min-h-[120px] relative hover:bg-blue-25 transition-colors cursor-pointer" data-date="2024-12-21">
+                            <div class="text-sm text-gray-900 font-medium mb-2">21</div>
+                        </div>
+
+                        <!-- Week 4 -->
+                        <div class="border-b border-r border-gray-200 p-2 min-h-[120px] relative hover:bg-blue-25 transition-colors cursor-pointer" data-date="2024-12-22">
+                            <div class="text-sm text-gray-900 font-medium mb-2">22</div>
+                        </div>
+
+                        <div class="border-b border-r border-gray-200 p-2 min-h-[120px] relative hover:bg-blue-25 transition-colors cursor-pointer" data-date="2024-12-23">
+                            <div class="text-sm text-gray-900 font-medium mb-2">23</div>
+                        </div>
+
+                        <div class="border-b border-r border-gray-200 p-2 min-h-[120px] relative hover:bg-blue-25 transition-colors cursor-pointer" data-date="2024-12-24">
+                            <div class="text-sm text-gray-900 font-medium mb-2">24</div>
+                            <!-- Event: Holiday -->
+                            <div class="mb-1 p-1 rounded text-xs text-white bg-holidays cursor-move hover:shadow-md transition-shadow" 
+                                 draggable="true" 
+                                 data-event-id="5"
+                                 data-mock="true">
+                                <div class="font-medium">Christmas Eve</div>
+                                <div class="text-xs opacity-90">All Day</div>
+                            </div>
+                        </div>
+
+                        <div class="border-b border-r border-gray-200 p-2 min-h-[120px] relative hover:bg-blue-25 transition-colors cursor-pointer" data-date="2024-12-25">
+                            <div class="text-sm text-gray-900 font-medium mb-2">25</div>
+                            <!-- Event: Holiday -->
+                            <div class="mb-1 p-1 rounded text-xs text-white bg-holidays cursor-move hover:shadow-md transition-shadow" 
+                                 draggable="true" 
+                                 data-event-id="6"
+                                 data-mock="true">
+                                <div class="font-medium">Christmas Day</div>
+                                <div class="text-xs opacity-90">All Day</div>
+                            </div>
+                        </div>
+
+                        <div class="border-b border-r border-gray-200 p-2 min-h-[120px] relative hover:bg-blue-25 transition-colors cursor-pointer" data-date="2024-12-26">
+                            <div class="text-sm text-gray-900 font-medium mb-2">26</div>
+                        </div>
+
+                        <div class="border-b border-r border-gray-200 p-2 min-h-[120px] relative hover:bg-blue-25 transition-colors cursor-pointer" data-date="2024-12-27">
+                            <div class="text-sm text-gray-900 font-medium mb-2">27</div>
+                        </div>
+
+                        <div class="border-b border-r border-gray-200 p-2 min-h-[120px] relative hover:bg-blue-25 transition-colors cursor-pointer" data-date="2024-12-28">
+                            <div class="text-sm text-gray-900 font-medium mb-2">28</div>
+                        </div>
+
+                        <!-- Week 5 -->
+                        <div class="border-b border-r border-gray-200 p-2 min-h-[120px] relative hover:bg-blue-25 transition-colors cursor-pointer" data-date="2024-12-29">
+                            <div class="text-sm text-gray-900 font-medium mb-2">29</div>
+                        </div>
+
+                        <div class="border-b border-r border-gray-200 p-2 min-h-[120px] relative hover:bg-blue-25 transition-colors cursor-pointer" data-date="2024-12-30">
+                            <div class="text-sm text-gray-900 font-medium mb-2">30</div>
+                        </div>
+
+                        <div class="border-b border-r border-gray-200 p-2 min-h-[120px] relative hover:bg-blue-25 transition-colors cursor-pointer" data-date="2024-12-31">
+                            <div class="text-sm text-gray-900 font-medium mb-2">31</div>
+                            <!-- Event: Holiday -->
+                            <div class="mb-1 p-1 rounded text-xs text-white bg-holidays cursor-move hover:shadow-md transition-shadow" 
+                                 draggable="true" 
+                                 data-event-id="7"
+                                 data-mock="true">
+                                <div class="font-medium">New Year's Eve</div>
+                                <div class="text-xs opacity-90">All Day</div>
+                            </div>
+                        </div>
+
+                        <!-- Next month days -->
+                        <div class="border-b border-r border-gray-200 p-2 bg-gray-25 min-h-[120px] relative" data-date="2025-01-01">
+                            <div class="text-sm text-gray-400 font-medium">1</div>
+                        </div>
+
+                        <div class="border-b border-r border-gray-200 p-2 bg-gray-25 min-h-[120px] relative" data-date="2025-01-02">
+                            <div class="text-sm text-gray-400 font-medium">2</div>
+                        </div>
+
+                        <div class="border-b border-r border-gray-200 p-2 bg-gray-25 min-h-[120px] relative" data-date="2025-01-03">
+                            <div class="text-sm text-gray-400 font-medium">3</div>
+                        </div>
+
+                        <div class="border-b border-r border-gray-200 p-2 bg-gray-25 min-h-[120px] relative" data-date="2025-01-04">
+                            <div class="text-sm text-gray-400 font-medium">4</div>
+                        </div>
+                        <!-- @END_MAP )) -->
+                    </div>
+                </div>
+            </div>
+        </main>
+        <!-- @END_COMPONENT: CalendarGrid -->
+
+        <!-- Sidebar with Event Details and Controls -->
+        <!-- @COMPONENT: EventSidebar [event details and controls] -->
+        <aside class="fixed right-4 top-24 w-80 bg-white rounded-lg shadow-lg border border-gray-200 p-4 hidden lg:block" data-mock="true">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-gray-900">Today's Events</h3>
+                <button class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <!-- Event List -->
+            <div class="space-y-3">
+                <div class="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer">
+                    <div class="w-3 h-3 rounded-full bg-qbr-planning mt-1 flex-shrink-0"></div>
+                    <div class="flex-1 min-w-0">
+                        <h4 class="text-sm font-medium text-gray-900 truncate" data-mock="true">QBR Planning Session</h4>
+                        <p class="text-xs text-gray-600 mt-1" data-mock="true">9:00 AM - 11:00 AM</p>
+                        <p class="text-xs text-gray-500 mt-1" data-mock="true">Conference Room A</p>
+                    </div>
+                    <button class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <i class="fas fa-edit text-xs"></i>
+                    </button>
+                </div>
+
+                <div class="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer">
+                    <div class="w-3 h-3 rounded-full bg-monthly-review mt-1 flex-shrink-0"></div>
+                    <div class="flex-1 min-w-0">
+                        <h4 class="text-sm font-medium text-gray-900 truncate" data-mock="true">December Review</h4>
+                        <p class="text-xs text-gray-600 mt-1" data-mock="true">3:00 PM - 5:00 PM</p>
+                        <p class="text-xs text-gray-500 mt-1" data-mock="true">Online Meeting</p>
+                    </div>
+                    <button class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <i class="fas fa-edit text-xs"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="mt-6 pt-4 border-t border-gray-200">
+                <h4 class="text-sm font-medium text-gray-900 mb-3">This Month</h4>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="text-center p-2 bg-gray-50 rounded-lg">
+                        <div class="text-lg font-semibold text-gray-900" data-mock="true">7</div>
+                        <div class="text-xs text-gray-600">Events</div>
+                    </div>
+                    <div class="text-center p-2 bg-gray-50 rounded-lg">
+                        <div class="text-lg font-semibold text-gray-900" data-mock="true">24</div>
+                        <div class="text-xs text-gray-600">Hours</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Storage Info -->
+            <div class="mt-4 p-3 bg-green-50 rounded-lg border border-green-200">
+                <div class="flex items-center space-x-2">
+                    <i class="fas fa-shield-alt text-green-600 text-sm"></i>
+                    <span class="text-sm font-medium text-green-800">Local Storage Active</span>
+                </div>
+                <p class="text-xs text-green-700 mt-1">All data is stored securely on your device</p>
+            </div>
+        </aside>
+        <!-- @END_COMPONENT: EventSidebar -->
+
+        <!-- Event Creation/Edit Modal -->
+        <!-- @COMPONENT: EventModal [event creation and editing] -->
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden" id="eventModal" data-implementation="Should show/hide based on modal state">
+            <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+                <div class="flex items-center justify-between p-4 border-b border-gray-200">
+                    <h3 class="text-lg font-semibold text-gray-900">Create Event</h3>
+                    <button class="text-gray-400 hover:text-gray-600 transition-colors" data-event="click:closeModal">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+
+                <div class="p-4 space-y-4">
+                    <!-- Event Title -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Event Title</label>
+                        <input type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-qbr-planning focus:border-transparent" placeholder="Enter event title" data-mock="true">
+                    </div>
+
+                    <!-- Event Type -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Event Type</label>
+                        <select class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-qbr-planning focus:border-transparent" data-mock="true">
+                            <option value="">Select event type</option>
+                            <option value="pi-planning">PI Planning</option>
+                            <option value="qbr">QBR</option>
+                            <option value="qbr-planning">QBR Planning</option>
+                            <option value="monthly-review">Monthly Review</option>
+                            <option value="holidays">Holidays</option>
+                        </select>
+                    </div>
+
+                    <!-- Date and Time -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                            <input type="date" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-qbr-planning focus:border-transparent" data-mock="true">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Time</label>
+                            <input type="time" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-qbr-planning focus:border-transparent" data-mock="true">
+                        </div>
+                    </div>
+
+                    <!-- Description -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                        <textarea rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-qbr-planning focus:border-transparent resize-none" placeholder="Optional description" data-mock="true"></textarea>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-end space-x-3 p-4 border-t border-gray-200">
+                    <button class="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors" data-event="click:closeModal">Cancel</button>
+                    <button class="px-4 py-2 bg-qbr-planning text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors" data-event="click:saveEvent">Create Event</button>
+                </div>
+            </div>
+        </div>
+        <!-- @END_COMPONENT: EventModal -->
+
+        <!-- Toast Notifications -->
+        <!-- @COMPONENT: ToastNotifications [feedback messages] -->
+        <div class="fixed bottom-4 right-4 z-50 space-y-2" data-implementation="Should show success/error messages for user actions">
+            <!-- Success Toast (hidden by default) -->
+            <div class="bg-green-600 text-white px-4 py-3 rounded-lg shadow-lg flex items-center space-x-2 hidden" id="successToast">
+                <i class="fas fa-check-circle"></i>
+                <span data-mock="true">Event created successfully!</span>
+                <button class="ml-auto text-white hover:text-gray-200 transition-colors">
+                    <i class="fas fa-times text-sm"></i>
+                </button>
+            </div>
+
+            <!-- Error Toast (hidden by default) -->
+            <div class="bg-red-600 text-white px-4 py-3 rounded-lg shadow-lg flex items-center space-x-2 hidden" id="errorToast">
+                <i class="fas fa-exclamation-circle"></i>
+                <span data-mock="true">Failed to parse date. Please try again.</span>
+                <button class="ml-auto text-white hover:text-gray-200 transition-colors">
+                    <i class="fas fa-times text-sm"></i>
+                </button>
+            </div>
+        </div>
+        <!-- @END_COMPONENT: ToastNotifications -->
+
+        <!-- Export Modal -->
+        <!-- @COMPONENT: ExportModal [data export functionality] -->
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden" id="exportModal">
+            <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+                <div class="flex items-center justify-between p-4 border-b border-gray-200">
+                    <h3 class="text-lg font-semibold text-gray-900">Export Calendar</h3>
+                    <button class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+
+                <div class="p-4 space-y-4">
+                    <p class="text-sm text-gray-600">Choose export format for your calendar data:</p>
+                    
+                    <div class="space-y-3">
+                        <button class="w-full flex items-center justify-between p-3 border border-gray-300 rounded-lg hover:border-qbr-planning hover:bg-blue-50 transition-colors" data-implementation="Should export to JSON format">
+                            <div class="flex items-center space-x-3">
+                                <i class="fas fa-file-code text-qbr-planning"></i>
+                                <div class="text-left">
+                                    <div class="font-medium text-gray-900">JSON Format</div>
+                                    <div class="text-xs text-gray-600">Machine-readable backup</div>
+                                </div>
+                            </div>
+                            <i class="fas fa-download text-gray-400"></i>
+                        </button>
+
+                        <button class="w-full flex items-center justify-between p-3 border border-gray-300 rounded-lg hover:border-qbr-planning hover:bg-blue-50 transition-colors" data-implementation="Should export to iCal format using ics package">
+                            <div class="flex items-center space-x-3">
+                                <i class="fas fa-calendar text-qbr-planning"></i>
+                                <div class="text-left">
+                                    <div class="font-medium text-gray-900">iCal Format</div>
+                                    <div class="text-xs text-gray-600">Compatible with other calendar apps</div>
+                                </div>
+                            </div>
+                            <i class="fas fa-download text-gray-400"></i>
+                        </button>
+                    </div>
+
+                    <div class="pt-4 border-t border-gray-200">
+                        <label class="flex items-center space-x-2 cursor-pointer">
+                            <input type="file" accept=".json,.ics" class="hidden" data-implementation="Should import calendar data">
+                            <div class="flex items-center space-x-2 text-sm text-gray-600 hover:text-gray-900 transition-colors">
+                                <i class="fas fa-upload"></i>
+                                <span>Or import calendar data</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- @END_COMPONENT: ExportModal -->
+    </div>
+    <!-- @END_COMPONENT: CalendarApp -->
+
+    <script>
+        (function() {
+            // TODO: Implement business logic, API calls, or state management
+            // TODO: Integrate chrono-node for natural language date parsing
+            // TODO: Implement @dnd-kit for drag and drop functionality
+            // TODO: Set up IndexedDB for local data storage
+            // TODO: Add PWA functionality with service worker
+
+            // Basic interactivity for demonstration purposes only
+            let currentView = 'month';
+            let events = [
+                { id: 1, title: 'PI Planning Q4', type: 'pi-planning', date: '2024-12-03', time: '10:00-12:00' },
+                { id: 2, title: 'Q4 Business Review', type: 'qbr', date: '2024-12-05', time: '14:00-16:00' },
+                { id: 3, title: 'QBR Planning Session', type: 'qbr-planning', date: '2024-12-10', time: '09:00-11:00' },
+                { id: 4, title: 'December Review', type: 'monthly-review', date: '2024-12-15', time: '15:00-17:00' },
+                { id: 5, title: 'Christmas Eve', type: 'holidays', date: '2024-12-24', time: 'all-day' },
+                { id: 6, title: 'Christmas Day', type: 'holidays', date: '2024-12-25', time: 'all-day' },
+                { id: 7, title: 'New Year\'s Eve', type: 'holidays', date: '2024-12-31', time: 'all-day' }
+            ];
+
+            // Demo drag and drop feedback
+            document.querySelectorAll('[draggable="true"]').forEach(element => {
+                element.addEventListener('dragstart', function(e) {
+                    this.style.opacity = '0.5';
+                    e.dataTransfer.setData('text/plain', this.dataset.eventId);
+                });
+
+                element.addEventListener('dragend', function(e) {
+                    this.style.opacity = '1';
+                });
+            });
+
+            // Demo drop zones
+            document.querySelectorAll('[data-date]').forEach(day => {
+                day.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                    this.classList.add('bg-blue-100');
+                });
+
+                day.addEventListener('dragleave', function(e) {
+                    this.classList.remove('bg-blue-100');
+                });
+
+                day.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    this.classList.remove('bg-blue-100');
+                    // TODO: Implement actual event moving logic
+                    console.log('Move event to:', this.dataset.date);
+                });
+            });
+
+            // Natural language input demo
+            const naturalInput = document.querySelector('input[placeholder*="QBR"]');
+            if (naturalInput) {
+                naturalInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter' && this.value.trim()) {
+                        // TODO: Implement chrono-node parsing here
+                        console.log('Parse and create event:', this.value);
+                        this.value = '';
+                        // Show success toast
+                        showToast('Event created successfully!', 'success');
+                    }
+                });
+            }
+
+            function showToast(message, type = 'success') {
+                const toastId = type === 'success' ? 'successToast' : 'errorToast';
+                const toast = document.getElementById(toastId);
+                if (toast) {
+                    toast.querySelector('span').textContent = message;
+                    toast.classList.remove('hidden');
+                    setTimeout(() => toast.classList.add('hidden'), 3000);
+                }
+            }
+
+            // View switcher demo
+            document.querySelectorAll('.flex.bg-gray-100 button').forEach((btn, index) => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.flex.bg-gray-100 button').forEach(b => {
+                        b.classList.remove('bg-white', 'text-gray-900', 'shadow-sm');
+                        b.classList.add('text-gray-600');
+                    });
+                    this.classList.add('bg-white', 'text-gray-900', 'shadow-sm');
+                    this.classList.remove('text-gray-600');
+                    
+                    const views = ['month', 'week', 'day'];
+                    currentView = views[index];
+                    console.log('Switch to view:', currentView);
+                });
+            });
+
+            // Filter toggle demo
+            document.querySelectorAll('button[class*="border-pi-planning"], button[class*="border-qbr"], button[class*="border-monthly-review"], button[class*="border-holidays"]').forEach(filter => {
+                filter.addEventListener('click', function() {
+                    this.classList.toggle('bg-blue-50');
+                    this.classList.toggle('bg-white');
+                    console.log('Toggle filter for:', this.textContent.trim());
+                });
+            });
+        })();
+    </script>
+</body>
+</html>
