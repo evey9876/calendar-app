@@ -1,102 +1,52 @@
-import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 import { Event, InsertEvent } from '@shared/schema';
-import { nanoid } from 'nanoid';
+import { apiRequest } from './queryClient';
 
-interface CalendarDB extends DBSchema {
-  events: {
-    key: string;
-    value: Event;
-    indexes: {
-      'by-date': string;
-      'by-type': string;
-    };
-  };
-}
-
-class CalendarStorage {
-  private db: IDBPDatabase<CalendarDB> | null = null;
-
-  async init() {
-    if (this.db) return this.db;
-
-    this.db = await openDB<CalendarDB>('calendar-db', 1, {
-      upgrade(db) {
-        const eventStore = db.createObjectStore('events', {
-          keyPath: 'id',
-        });
-        eventStore.createIndex('by-date', 'date');
-        eventStore.createIndex('by-type', 'type');
-      },
-    });
-
-    return this.db;
-  }
-
+class ApiCalendarStorage {
   async createEvent(eventData: InsertEvent): Promise<Event> {
-    const db = await this.init();
-    const now = new Date().toISOString();
-    const event: Event = {
-      ...eventData,
-      id: nanoid(),
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    await db.add('events', event);
-    return event;
+    const res = await apiRequest('POST', '/api/events', eventData);
+    return await res.json();
   }
 
   async getEvent(id: string): Promise<Event | undefined> {
-    const db = await this.init();
-    return await db.get('events', id);
+    try {
+      const res = await apiRequest('GET', `/api/events/${id}`);
+      return await res.json();
+    } catch (error: any) {
+      if (error.message.includes('404')) {
+        return undefined;
+      }
+      throw error;
+    }
   }
 
   async getAllEvents(): Promise<Event[]> {
-    const db = await this.init();
-    return await db.getAll('events');
+    const res = await apiRequest('GET', '/api/events');
+    return await res.json();
   }
 
   async getEventsByDateRange(startDate: string, endDate: string): Promise<Event[]> {
-    const db = await this.init();
-    const tx = db.transaction('events', 'readonly');
-    const index = tx.store.index('by-date');
-    const events = await index.getAll(IDBKeyRange.bound(startDate, endDate));
-    return events;
+    const res = await apiRequest('GET', `/api/events/range/${startDate}/${endDate}`);
+    return await res.json();
   }
 
   async getEventsByType(type: string): Promise<Event[]> {
-    const db = await this.init();
-    const tx = db.transaction('events', 'readonly');
-    const index = tx.store.index('by-type');
-    return await index.getAll(type);
+    const res = await apiRequest('GET', `/api/events/type/${type}`);
+    return await res.json();
   }
 
   async updateEvent(id: string, updates: Partial<Event>): Promise<Event> {
-    const db = await this.init();
-    const existing = await db.get('events', id);
-    if (!existing) {
-      throw new Error('Event not found');
-    }
-
-    const updated: Event = {
-      ...existing,
-      ...updates,
-      id,
-      updatedAt: new Date().toISOString(),
-    };
-
-    await db.put('events', updated);
-    return updated;
+    const res = await apiRequest('PUT', `/api/events/${id}`, updates);
+    return await res.json();
   }
 
   async deleteEvent(id: string): Promise<void> {
-    const db = await this.init();
-    await db.delete('events', id);
+    await apiRequest('DELETE', `/api/events/${id}`);
   }
 
   async searchEvents(query: string): Promise<Event[]> {
-    const db = await this.init();
-    const allEvents = await db.getAll('events');
+    // For now, get all events and filter client-side
+    // In the future, this could be optimized with a server-side search endpoint
+    const allEvents = await this.getAllEvents();
     const lowerQuery = query.toLowerCase();
     
     return allEvents.filter(event => 
@@ -110,20 +60,21 @@ class CalendarStorage {
   }
 
   async importEvents(events: Event[]): Promise<void> {
-    const db = await this.init();
-    const tx = db.transaction('events', 'readwrite');
-    
+    // Import events one by one to the database
     for (const event of events) {
-      await tx.store.put(event);
+      // Remove timestamps since they'll be set by the server
+      const { id, createdAt, updatedAt, ...eventData } = event;
+      await this.createEvent(eventData);
     }
-    
-    await tx.done;
   }
 
   async clearAll(): Promise<void> {
-    const db = await this.init();
-    await db.clear('events');
+    // Get all events and delete them one by one
+    const events = await this.getAllEvents();
+    for (const event of events) {
+      await this.deleteEvent(event.id);
+    }
   }
 }
 
-export const storage = new CalendarStorage();
+export const storage = new ApiCalendarStorage();
