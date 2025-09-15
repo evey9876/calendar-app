@@ -15,6 +15,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { EventCard } from './EventCard';
+import { SpanningEventCard } from './SpanningEventCard';
 import { useCalendarStore } from '@/stores/calendarStore';
 import { Event } from '@shared/schema';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
@@ -56,6 +57,26 @@ export function Calendar({ onEventClick, onDateClick, viewerMode = false }: Cale
     })
   );
 
+  // Helper function to generate quarter header with proper year handling
+  const generateQuarterHeader = (quarterData: any) => {
+    const monthNames = quarterData.months.map((month: any) => format(month.month, 'MMM'));
+    const years = quarterData.months.map((month: any) => format(month.month, 'yyyy'));
+    
+    // Check if all months are in the same year
+    const uniqueYears = Array.from(new Set(years));
+    
+    if (uniqueYears.length === 1) {
+      // All months in same year: "Q1: Aug - Sep - Oct 2025"
+      return `${quarterData.quarterName}: ${monthNames.join(' - ')} ${uniqueYears[0]}`;
+    } else {
+      // Months span multiple years: "Q2: Nov - Dec 2025 - Jan 2026"
+      const monthYearPairs = quarterData.months.map((month: any) => 
+        `${format(month.month, 'MMM')} ${format(month.month, 'yyyy')}`
+      );
+      return `${quarterData.quarterName}: ${monthYearPairs.join(' - ')}`;
+    }
+  };
+
   // Generate calendar days for quarterly view
   const getQuarterMonths = (date: Date) => {
     const month = date.getMonth(); // 0-11
@@ -87,35 +108,185 @@ export function Calendar({ onEventClick, onDateClick, viewerMode = false }: Cale
     return 4; // Q4: May-Jul
   };
 
-  const threeMonthsData = useMemo(() => {
-    const quarterMonths = getQuarterMonths(currentDate);
-    const year = currentDate.getFullYear();
+  // Generate data for all 4 quarters at once
+  const allQuartersData = useMemo(() => {
+    const currentYear = new Date().getFullYear();
     
-    return quarterMonths.map(monthIndex => {
-      // Handle year transitions for Q2 (Nov-Dec-Jan)
-      let monthYear = year;
-      if (monthIndex === 0 && quarterMonths.includes(10)) {
-        // January of next year when quarter includes November
-        monthYear = year + 1;
-      }
-      
-      const month = new Date(monthYear, monthIndex, 1);
-      const monthStart = startOfMonth(month);
-      const monthEnd = endOfMonth(month);
-      const calendarStart = startOfWeek(monthStart);
-      const calendarEnd = endOfWeek(monthEnd);
+    const quarters = [
+      { name: 'Q1', months: [7, 8, 9] },     // Aug, Sep, Oct
+      { name: 'Q2', months: [10, 11, 0] },   // Nov, Dec, Jan
+      { name: 'Q3', months: [1, 2, 3] },     // Feb, Mar, Apr
+      { name: 'Q4', months: [4, 5, 6] }      // May, Jun, Jul
+    ];
+    
+    return quarters.map(quarter => {
+      const monthsData = quarter.months.map(monthIndex => {
+        // Handle year transitions for operating year (Aug 2025 - Jul 2026)
+        let monthYear = currentYear;
+        
+        // Q2: January is in next year when quarter includes November 
+        if (monthIndex === 0 && quarter.months.includes(10)) {
+          monthYear = currentYear + 1;
+        }
+        // Q3 and Q4: All months are in next year for operating year
+        else if (quarter.name === 'Q3' || quarter.name === 'Q4') {
+          monthYear = currentYear + 1;
+        }
+        
+        const month = new Date(monthYear, monthIndex, 1);
+        const monthStart = startOfMonth(month);
+        const monthEnd = endOfMonth(month);
+        const calendarStart = startOfWeek(monthStart);
+        const calendarEnd = endOfWeek(monthEnd);
+        
+        return {
+          month,
+          days: eachDayOfInterval({
+            start: calendarStart,
+            end: calendarEnd,
+          })
+        };
+      });
       
       return {
-        month,
-        days: eachDayOfInterval({
-          start: calendarStart,
-          end: calendarEnd,
-        })
+        quarterName: quarter.name,
+        months: monthsData
       };
     });
-  }, [currentDate]);
+  }, []);
 
   const filteredEvents = getFilteredEvents();
+
+  // Helper function to identify multi-day events
+  const isMultiDayEvent = (event: Event) => {
+    return event.endDate && event.endDate !== event.date;
+  };
+
+  // Helper function to get multi-day events for a specific month
+  const getMultiDayEventsForMonth = (monthData: { month: Date; days: Date[] }) => {
+    const monthStart = format(monthData.days[0], 'yyyy-MM-dd');
+    const monthEnd = format(monthData.days[monthData.days.length - 1], 'yyyy-MM-dd');
+    
+    return filteredEvents.filter(event => {
+      if (!isMultiDayEvent(event)) return false;
+      
+      // Check if event overlaps with this month's date range
+      const eventStart = new Date(event.date + 'T00:00:00');
+      const eventEnd = new Date(event.endDate! + 'T00:00:00');
+      const rangeStart = new Date(monthStart + 'T00:00:00');
+      const rangeEnd = new Date(monthEnd + 'T00:00:00');
+      
+      return eventEnd >= rangeStart && eventStart <= rangeEnd;
+    });
+  };
+
+  // Helper function to group days into weeks for spanning events
+  const groupDaysIntoWeeks = (days: Date[]) => {
+    const workDays = days.filter(day => {
+      const dayOfWeek = day.getDay();
+      return dayOfWeek >= 1 && dayOfWeek <= 5; // Monday (1) to Friday (5)
+    });
+    
+    const weeks: Date[][] = [];
+    let currentWeek: Date[] = [];
+    
+    workDays.forEach(day => {
+      const dayOfWeek = day.getDay();
+      
+      // Start new week on Monday
+      if (dayOfWeek === 1 && currentWeek.length > 0) {
+        weeks.push(currentWeek);
+        currentWeek = [day];
+      } else {
+        currentWeek.push(day);
+      }
+    });
+    
+    if (currentWeek.length > 0) {
+      weeks.push(currentWeek);
+    }
+    
+    return weeks;
+  };
+
+  // Lane assignment algorithm for multi-day events
+  const assignEventLanes = (events: Event[], weekDays: Date[]) => {
+    if (events.length === 0) return { eventLanes: new Map(), maxLanes: 0 };
+
+    // Convert events to intervals with additional data
+    const intervals = events.map(event => {
+      const startDate = new Date(event.date + 'T00:00:00');
+      const endDate = new Date(event.endDate! + 'T00:00:00');
+      
+      // Find indices within this week
+      const startIdx = weekDays.findIndex(day => 
+        format(day, 'yyyy-MM-dd') === format(startDate, 'yyyy-MM-dd')
+      );
+      const endIdx = weekDays.findIndex(day => 
+        format(day, 'yyyy-MM-dd') === format(endDate, 'yyyy-MM-dd')
+      );
+
+      return {
+        event,
+        start: startIdx >= 0 ? startIdx : 0,
+        end: endIdx >= 0 ? endIdx : weekDays.length - 1,
+        startDate,
+        endDate
+      };
+    }).filter(interval => interval.start <= interval.end); // Only include events that span within this week
+
+    // Sort by start day, then by duration (longer events first for better packing)
+    intervals.sort((a, b) => {
+      if (a.start !== b.start) return a.start - b.start;
+      return (b.end - b.start) - (a.end - a.start);
+    });
+
+    // Greedy lane assignment
+    const lanes: { start: number; end: number; eventId: string }[][] = [];
+    const eventLanes = new Map<string, number>();
+
+    for (const interval of intervals) {
+      let assignedLane = -1;
+      
+      // Try to assign to existing lane
+      for (let laneIndex = 0; laneIndex < lanes.length; laneIndex++) {
+        const lane = lanes[laneIndex];
+        let canFit = true;
+        
+        // Check if this interval overlaps with any event in this lane
+        for (const existing of lane) {
+          if (!(interval.end < existing.start || interval.start > existing.end)) {
+            canFit = false;
+            break;
+          }
+        }
+        
+        if (canFit) {
+          assignedLane = laneIndex;
+          lane.push({ 
+            start: interval.start, 
+            end: interval.end, 
+            eventId: interval.event.id 
+          });
+          break;
+        }
+      }
+      
+      // If no existing lane works, create new lane
+      if (assignedLane === -1) {
+        assignedLane = lanes.length;
+        lanes.push([{ 
+          start: interval.start, 
+          end: interval.end, 
+          eventId: interval.event.id 
+        }]);
+      }
+      
+      eventLanes.set(interval.event.id, assignedLane);
+    }
+
+    return { eventLanes, maxLanes: lanes.length };
+  };
 
   const previousQuarter = () => {
     // Move to previous quarter (3 months back)
@@ -183,7 +354,22 @@ export function Calendar({ onEventClick, onDateClick, viewerMode = false }: Cale
       
       if (newDate !== activeEvent.date) {
         try {
-          await updateEvent(activeEvent.id, { date: newDate });
+          // For multi-day events, maintain the duration when moving
+          if (isMultiDayEvent(activeEvent)) {
+            const originalStart = new Date(activeEvent.date + 'T00:00:00');
+            const originalEnd = new Date(activeEvent.endDate! + 'T00:00:00');
+            const duration = originalEnd.getTime() - originalStart.getTime();
+            
+            const newStart = new Date(newDate + 'T00:00:00');
+            const newEnd = new Date(newStart.getTime() + duration);
+            
+            await updateEvent(activeEvent.id, { 
+              date: newDate,
+              endDate: format(newEnd, 'yyyy-MM-dd')
+            });
+          } else {
+            await updateEvent(activeEvent.id, { date: newDate });
+          }
         } catch (error) {
           console.error('Failed to move event:', error);
         }
@@ -204,7 +390,7 @@ export function Calendar({ onEventClick, onDateClick, viewerMode = false }: Cale
     );
   };
 
-  const DroppableDay = ({ day, monthData }: { day: Date; monthData: Date }) => {
+  const DroppableDay = ({ day, monthData, maxLanes = 0 }: { day: Date; monthData: Date; maxLanes?: number }) => {
     const dateStr = format(day, 'yyyy-MM-dd');
     const { setNodeRef, isOver } = useDroppable({
       id: `date-${dateStr}`,
@@ -213,7 +399,7 @@ export function Calendar({ onEventClick, onDateClick, viewerMode = false }: Cale
     const dayNumber = format(day, 'd');
     const isCurrentMonth = isSameMonth(day, monthData);
     const isCurrentDay = isToday(day);
-    const dayEvents = getEventsForDate(dateStr);
+    const dayEvents = getEventsForDate(dateStr).filter(event => !isMultiDayEvent(event));
 
     if (viewerMode) {
       // Viewer mode - no drag and drop, no date clicking
@@ -240,7 +426,7 @@ export function Calendar({ onEventClick, onDateClick, viewerMode = false }: Cale
             )}
           </span>
           
-          <div className="space-y-1">
+          <div className="space-y-1" style={{ marginTop: `${20 + (maxLanes * 24)}px` }}>
             {dayEvents.slice(0, 2).map((event) => (
               <EventCard
                 key={event.id}
@@ -285,7 +471,7 @@ export function Calendar({ onEventClick, onDateClick, viewerMode = false }: Cale
           )}
         </span>
         
-        <div className="space-y-1">
+        <div className="space-y-1" style={{ marginTop: `${20 + (maxLanes * 24)}px` }}>
           {dayEvents.slice(0, 2).map((event) => (
             <EventCard
               key={event.id}
@@ -307,6 +493,9 @@ export function Calendar({ onEventClick, onDateClick, viewerMode = false }: Cale
 
 
   const renderMonth = (monthData: { month: Date; days: Date[] }, index: number) => {
+    const weeks = groupDaysIntoWeeks(monthData.days);
+    const multiDayEvents = getMultiDayEventsForMonth(monthData);
+    
     return (
       <div key={index} className="mb-8">
         <h3 className="text-lg font-semibold text-gray-800 mb-4 text-center">
@@ -314,16 +503,54 @@ export function Calendar({ onEventClick, onDateClick, viewerMode = false }: Cale
         </h3>
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           {renderWeekdays()}
-          <div className="grid grid-cols-5 divide-x divide-gray-200">
-            {monthData.days
-              .filter(day => {
-                const dayOfWeek = day.getDay();
-                return dayOfWeek >= 1 && dayOfWeek <= 5; // Monday (1) to Friday (5)
-              })
-              .map(day => (
-                <DroppableDay key={format(day, 'yyyy-MM-dd')} day={day} monthData={monthData.month} />
-              ))}
-          </div>
+          
+          {/* Render weeks with spanning events */}
+          {weeks.map((weekDays, weekIndex) => {
+            const weekStart = weekDays[0];
+            const weekEnd = weekDays[weekDays.length - 1];
+            
+            // Get spanning events for this week
+            const weekSpanningEvents = multiDayEvents.filter(event => {
+              const eventStart = new Date(event.date + 'T00:00:00');
+              const eventEnd = new Date(event.endDate! + 'T00:00:00');
+              return eventEnd >= weekStart && eventStart <= weekEnd;
+            });
+
+            // Assign lanes for this week's events
+            const { eventLanes, maxLanes } = assignEventLanes(weekSpanningEvents, weekDays);
+            
+            return (
+              <div key={weekIndex} className="relative">
+                {/* Spanning Events for this week */}
+                {weekSpanningEvents.map(event => {
+                  const eventStart = new Date(event.date + 'T00:00:00');
+                  const eventEnd = new Date(event.endDate! + 'T00:00:00');
+                  const lane = eventLanes.get(event.id) || 0;
+                  
+                  return (
+                    <SpanningEventCard
+                      key={`${event.id}-week-${weekIndex}`}
+                      event={event}
+                      onClick={onEventClick}
+                      startDate={eventStart}
+                      endDate={eventEnd}
+                      weekDays={weekDays}
+                      viewerMode={viewerMode}
+                      lane={lane}
+                      maxLanes={maxLanes}
+                    />
+                  );
+                })}
+                
+                {/* Week Days Grid */}
+                <div className="grid grid-cols-5 divide-x divide-gray-200">
+                  {weekDays.map(day => (
+                    <DroppableDay key={format(day, 'yyyy-MM-dd')} day={day} monthData={monthData.month} maxLanes={maxLanes} />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     );
@@ -334,68 +561,20 @@ export function Calendar({ onEventClick, onDateClick, viewerMode = false }: Cale
       {/* Calendar Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-4">
-          {/* Quarter Selector */}
-          <Select 
-            value={`Q${getQuarterNumber(currentDate)}`} 
-            onValueChange={goToQuarter}
-          >
-            <SelectTrigger className="w-20 h-9 text-sm border-gray-300 hover:border-gray-400 focus:border-blue-500 transition-colors" data-testid="quarter-selector">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Q1">Q1</SelectItem>
-              <SelectItem value="Q2">Q2</SelectItem>
-              <SelectItem value="Q3">Q3</SelectItem>
-              <SelectItem value="Q4">Q4</SelectItem>
-            </SelectContent>
-          </Select>
           <h2 
             className="text-2xl font-bold text-gray-800"
-            data-testid="current-month-year"
+            data-testid="current-year"
           >
-            {(() => {
-              const quarterMonths = getQuarterMonths(currentDate);
-              const year = currentDate.getFullYear();
-              const firstMonth = new Date(year, quarterMonths[0], 1);
-              const lastMonth = new Date(year, quarterMonths[2], 1);
-              
-              // Handle year transition for Q2
-              if (quarterMonths.includes(0) && quarterMonths.includes(10)) {
-                const adjustedLastMonth = new Date(year + 1, 0, 1);
-                return `Q${getQuarterNumber(currentDate)}: ${format(firstMonth, 'MMM')} - ${format(adjustedLastMonth, 'MMM yyyy')}`;
-              }
-              
-              return `Q${getQuarterNumber(currentDate)}: ${format(firstMonth, 'MMM')} - ${format(lastMonth, 'MMM yyyy')}`;
-            })()}
+            Operating Year {new Date().getFullYear()}-{(new Date().getFullYear() + 1).toString().slice(2)}
           </h2>
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={previousQuarter}
-              className="p-2 rounded-lg hover:bg-white hover:shadow-sm transition-all duration-200 text-gray-600 hover:text-gray-800"
-              data-testid="button-previous-quarter"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              onClick={goToToday}
-              className="px-4 py-2 text-sm font-medium text-[#02C8FF] hover:bg-[#02C8FF] hover:text-white rounded-lg transition-all duration-200"
-              data-testid="button-go-to-today"
-            >
-              Today
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={nextQuarter}
-              className="p-2 rounded-lg hover:bg-white hover:shadow-sm transition-all duration-200 text-gray-600 hover:text-gray-800"
-              data-testid="button-next-quarter"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </Button>
-          </div>
+          <Button
+            variant="ghost"
+            onClick={goToToday}
+            className="px-4 py-2 text-sm font-medium text-[#02C8FF] hover:bg-[#02C8FF] hover:text-white rounded-lg transition-all duration-200"
+            data-testid="button-go-to-today"
+          >
+            Today
+          </Button>
         </div>
 
         <div className="hidden lg:flex items-center space-x-3">
@@ -410,10 +589,24 @@ export function Calendar({ onEventClick, onDateClick, viewerMode = false }: Cale
         </div>
       </div>
 
-      {/* Calendar Grid - 3 Months */}
+      {/* Calendar Grid - All 4 Quarters */}
       {viewerMode ? (
-        <div className="space-y-8">
-          {threeMonthsData.map((monthData, index) => renderMonth(monthData, index))}
+        <div className="space-y-12">
+          {allQuartersData.map((quarterData, quarterIndex) => (
+            <div key={quarterIndex} className="space-y-6">
+              {/* Quarter Header */}
+              <div className="border-b border-gray-200 pb-4">
+                <h3 className="text-xl font-bold text-gray-800 mb-2">
+                  {generateQuarterHeader(quarterData)}
+                </h3>
+              </div>
+              
+              {/* 3 Months in this Quarter */}
+              <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                {quarterData.months.map((monthData, monthIndex) => renderMonth(monthData, monthIndex))}
+              </div>
+            </div>
+          ))}
         </div>
       ) : (
         <DndContext
@@ -422,13 +615,33 @@ export function Calendar({ onEventClick, onDateClick, viewerMode = false }: Cale
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
-          <div className="space-y-8">
-            {threeMonthsData.map((monthData, index) => renderMonth(monthData, index))}
+          <div className="space-y-12">
+            {allQuartersData.map((quarterData, quarterIndex) => (
+              <div key={quarterIndex} className="space-y-6">
+                {/* Quarter Header */}
+                <div className="border-b border-gray-200 pb-4">
+                  <h3 className="text-xl font-bold text-gray-800 mb-2">
+                    {generateQuarterHeader(quarterData)}
+                  </h3>
+                </div>
+                
+                {/* 3 Months in this Quarter */}
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                  {quarterData.months.map((monthData, monthIndex) => renderMonth(monthData, monthIndex))}
+                </div>
+              </div>
+            ))}
           </div>
           
           <DragOverlay>
             {activeEvent ? (
-              <EventCard event={activeEvent} isDragging />
+              isMultiDayEvent(activeEvent) ? (
+                <div className={`px-2 py-1 rounded text-xs font-medium text-white opacity-75 ${activeEvent.type === 'PLANNING' ? 'bg-[#2563eb]' : activeEvent.type === 'MEETING' ? 'bg-[#dc2626]' : activeEvent.type === 'MONTHLY_REVIEW' ? 'bg-[#000000]' : activeEvent.type === 'HOLIDAYS' ? 'bg-[#FF9000]' : 'bg-[#ec4899]'}`}>
+                  {activeEvent.title}
+                </div>
+              ) : (
+                <EventCard event={activeEvent} isDragging />
+              )
             ) : null}
           </DragOverlay>
         </DndContext>
